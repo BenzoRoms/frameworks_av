@@ -54,4 +54,6 @@ LOCAL_MODULE:= mediaserver
 LOCAL_32_BIT_ONLY := true
 #LOCAL_CFLAGS += -std=gnu++11
 
+LOCAL_INIT_RC := mediaserver.rc
+
 include $(BUILD_EXECUTABLE)
