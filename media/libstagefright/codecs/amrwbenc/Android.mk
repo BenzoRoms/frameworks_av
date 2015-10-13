@@ -102,6 +102,9 @@ LOCAL_C_INCLUDES := \
 
 LOCAL_CFLAGS += -Werror
 
+# work around internal compiler error
+LOCAL_CFLAGS += -fno-wrapv
+
 include $(BUILD_STATIC_LIBRARY)
 
 ################################################################################

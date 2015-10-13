@@ -71,6 +71,9 @@ LOCAL_CFLAGS := \
 
 LOCAL_CFLAGS += -Werror
 
+# work around internal compiler error
+LOCAL_CFLAGS += -fno-wrapv
+
 LOCAL_MODULE := libstagefright_amrnbenc
 
 include $(BUILD_STATIC_LIBRARY)
