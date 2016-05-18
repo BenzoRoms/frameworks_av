@@ -6120,6 +6120,7 @@ reacquire_wakelock:
         // reference to a fast track which is about to be removed
         sp<RecordTrack> fastTrackToRemove;
 
+        size_t activeNormalTrack = 0;
         { // scope for mLock
             Mutex::Autolock _l(mLock);
 
@@ -6221,6 +6222,8 @@ reacquire_wakelock:
                     ALOG_ASSERT(!mFastTrackAvail);
                     ALOG_ASSERT(fastTrack == 0);
                     fastTrack = activeTrack;
+                } else {
+                    activeNormalTrack++;
                 }
             }
 
@@ -6354,7 +6357,9 @@ reacquire_wakelock:
         if (framesRead < 0 || (framesRead == 0 && mPipeSource == 0)) {
             ALOGE("read failed: framesRead=%zd", framesRead);
             // Force input into standby so that it tries to recover at next read attempt
-            inputStandBy();
+            // No need to call standby in case of OVERRUN if only fastTrack is active
+            if ((activeNormalTrack && (framesRead == (ssize_t)OVERRUN)) || (mPipeSource == 0))
+                inputStandBy();
             sleepUs = kRecordThreadSleepUs;
         }
         if (framesRead <= 0) {
