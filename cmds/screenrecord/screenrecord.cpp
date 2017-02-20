@@ -64,6 +64,8 @@ static const uint32_t kMaxTimeLimitSec = 3600;       // 1 Hour
 static const uint32_t kFallbackWidth = 1280;        // 720p
 static const uint32_t kFallbackHeight = 720;
 static const char* kMimeTypeAvc = "video/avc";
+static const char* kMimeTypeHevc = "video/hevc";
+static const char* kMimeTypeString = kMimeTypeAvc;
 
 // Build-time parameters.
 #ifdef LANDSCAPE_ONLY
@@ -76,7 +78,7 @@ static bool gLandscapeOnly = false;
 static bool gVerbose = false;           // chatty on stdout
 static bool gRotate = false;            // rotate 90 degrees
 static enum {
-    FORMAT_MP4, FORMAT_H264, FORMAT_FRAMES, FORMAT_RAW_FRAMES
+    FORMAT_MP4, FORMAT_H264, FORMAT_H265, FORMAT_FRAMES, FORMAT_RAW_FRAMES
 } gOutputFormat = FORMAT_MP4;           // data format for output
 static bool gSizeSpecified = false;     // was size explicitly requested?
 static bool gWantInfoScreen = false;    // do we want initial info screen?
@@ -158,13 +160,13 @@ static status_t prepareEncoder(float displayFps, sp<MediaCodec>* pCodec,
 
     if (gVerbose) {
         printf("Configuring recorder for %dx%d %s at %.2fMbps\n",
-                gVideoWidth, gVideoHeight, kMimeTypeAvc, gBitRate / 1000000.0);
+                gVideoWidth, gVideoHeight, kMimeTypeString, gBitRate / 1000000.0);
     }
 
     sp<AMessage> format = new AMessage;
     format->setInt32("width", gVideoWidth);
     format->setInt32("height", gVideoHeight);
-    format->setString("mime", kMimeTypeAvc);
+    format->setString("mime", kMimeTypeString);
     format->setInt32("color-format", OMX_COLOR_FormatAndroidOpaque);
     format->setInt32("bitrate", gBitRate);
     format->setFloat("frame-rate", displayFps);
@@ -174,10 +176,10 @@ static status_t prepareEncoder(float displayFps, sp<MediaCodec>* pCodec,
     looper->setName("screenrecord_looper");
     looper->start();
     ALOGV("Creating codec");
-    sp<MediaCodec> codec = MediaCodec::CreateByType(looper, kMimeTypeAvc, true);
+    sp<MediaCodec> codec = MediaCodec::CreateByType(looper, kMimeTypeString, true);
     if (codec == NULL) {
         fprintf(stderr, "ERROR: unable to create %s codec instance\n",
-                kMimeTypeAvc);
+                kMimeTypeString);
         return UNKNOWN_ERROR;
     }
 
@@ -185,7 +187,7 @@ static status_t prepareEncoder(float displayFps, sp<MediaCodec>* pCodec,
             MediaCodec::CONFIGURE_FLAG_ENCODE);
     if (err != NO_ERROR) {
         fprintf(stderr, "ERROR: unable to configure %s codec at %dx%d (err=%d)\n",
-                kMimeTypeAvc, gVideoWidth, gVideoHeight, err);
+                kMimeTypeString, gVideoWidth, gVideoHeight, err);
         codec->release();
         return err;
     }
@@ -489,7 +491,7 @@ static status_t runEncoder(const sp<MediaCodec>& encoder,
 }
 
 /*
- * Raw H.264 byte stream output requested.  Send the output to stdout
+ * Raw H.264/H.265 byte stream output requested.  Send the output to stdout
  * if desired.  If the output is a tty, reconfigure it to avoid the
  * CRLF line termination that we see with "adb shell" commands.
  */
@@ -673,6 +675,7 @@ static status_t recordScreen(const char* fileName) {
             break;
         }
         case FORMAT_H264:
+        case FORMAT_H265:
         case FORMAT_FRAMES:
         case FORMAT_RAW_FRAMES: {
             rawFp = prepareRawOutput(fileName);
@@ -883,6 +886,8 @@ static void usage() {
         "    in videos captured to illustrate bugs.\n"
         "--time-limit TIME\n"
         "    Set the maximum recording time, in seconds.  Default / maximum is %d.\n"
+        "--codec HEVC\n"
+        "    Select HEVC encoder. If not specified, AVC encoder is used.\n"
         "--verbose\n"
         "    Display interesting information on stdout.\n"
         "--help\n"
@@ -910,6 +915,7 @@ int main(int argc, char* const argv[]) {
         { "show-frame-time",    no_argument,        NULL, 'f' },
         { "rotate",             no_argument,        NULL, 'r' },
         { "output-format",      required_argument,  NULL, 'o' },
+        { "codec",              required_argument,  NULL, 'c' },
         { NULL,                 0,                  NULL, 0 }
     };
 
@@ -980,6 +986,8 @@ int main(int argc, char* const argv[]) {
                 gOutputFormat = FORMAT_MP4;
             } else if (strcmp(optarg, "h264") == 0) {
                 gOutputFormat = FORMAT_H264;
+            } else if (strcmp(optarg, "h265") == 0) {
+                gOutputFormat = FORMAT_H265;
             } else if (strcmp(optarg, "frames") == 0) {
                 gOutputFormat = FORMAT_FRAMES;
             } else if (strcmp(optarg, "raw-frames") == 0) {
@@ -987,6 +995,11 @@ int main(int argc, char* const argv[]) {
             } else {
                 fprintf(stderr, "Unknown format '%s'\n", optarg);
                 return 2;
+            }
+            break;
+        case 'c':
+            if (strcmp(optarg, "HEVC") == 0) {
+                kMimeTypeString = kMimeTypeHevc;
             }
             break;
         default:
