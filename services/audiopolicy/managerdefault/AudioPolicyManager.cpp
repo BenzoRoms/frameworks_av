@@ -1224,9 +1224,9 @@ status_t AudioPolicyManager::startSource(sp<AudioOutputDescriptor> outputDesc,
 
         // apply volume rules for current stream and device if necessary
         checkAndSetVolume(stream,
-                          mVolumeCurves->getVolumeIndex(stream, device),
+                          mVolumeCurves->getVolumeIndex(stream, outputDesc->device()),
                           outputDesc,
-                          device);
+                          outputDesc->device());
 
         // update the outputs if starting an output with a stream that can affect notification
         // routing
